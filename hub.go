@@ -43,7 +43,11 @@ func (this *hub) GetSession(identifier string) Session {
 }
 
 func (this *hub) RemoveSession(identifier string) {
-	if _, ok := this.m.Load(identifier); ok {
+	if val, ok := this.m.Load(identifier); ok {
+		var s = val.(Session)
+		if s != nil {
+			s.Conn().Close()
+		}
 		this.m.Delete(identifier)
 		atomic.AddInt64(&this.c, -1)
 	}

@@ -3,6 +3,14 @@
 <head>
   <title>Chat Example</title>
   <script type="text/javascript">
+
+    function getQueryString(name) {
+      var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+      var r = window.location.search.substr(1).match(reg);
+      if (r != null) return unescape(r[2]); return null;
+    }
+
+
     window.onload = function () {
       var conn;
       var msg = document.getElementById("msg");
@@ -29,7 +37,10 @@
       };
 
       if (window["WebSocket"]) {
-        conn = new WebSocket("ws://" + document.location.host + "/ws");
+
+        var token = getQueryString("token");
+
+        conn = new WebSocket("ws://localhost:8080/ws?app_key=123&token="+token);
         conn.onclose = function (evt) {
           var item = document.createElement("div");
           item.innerHTML = "<b>Connection closed.</b>";

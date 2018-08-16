@@ -18,6 +18,7 @@ const (
 )
 
 type Session interface {
+	Conn() *websocket.Conn
 	Hub() Hub
 	Identifier() string
 	Write(data []byte)
@@ -135,6 +136,10 @@ func (this *session) write(w *sync.WaitGroup) {
 			}
 		}
 	}
+}
+
+func (this *session) Conn() *websocket.Conn {
+	return this.conn
 }
 
 func (this *session) Hub() Hub {
