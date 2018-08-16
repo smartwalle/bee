@@ -40,7 +40,7 @@
 
         var token = getQueryString("token");
 
-        conn = new WebSocket("ws://localhost:8080/ws?app_key=123&token="+token);
+        conn = new WebSocket("ws://192.168.1.99:9999/api/hotel/message/ws?app_key=123&token="+token);
         conn.onclose = function (evt) {
           var item = document.createElement("div");
           item.innerHTML = "<b>Connection closed.</b>";

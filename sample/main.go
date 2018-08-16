@@ -60,7 +60,8 @@ func (this *handler) DidWrittenData(s bee.Session, data []byte) {
 func (this *handler) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
 
-	s.Hub().Range(func(identifier string, s bee.Session) {
+	s.Hub().Range(func(identifier string, s bee.Session) bool {
 		s.Write(data)
+		return true
 	})
 }

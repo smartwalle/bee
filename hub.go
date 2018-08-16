@@ -12,7 +12,7 @@ type Hub interface {
 
 	RemoveSession(identifier string)
 
-	Range(f func(identifier string, s Session))
+	Range(f func(identifier string, s Session) bool)
 
 	Count() int64
 }
@@ -52,10 +52,9 @@ func (this *hub) RemoveSession(identifier string) {
 	}
 }
 
-func (this *hub) Range(f func(identifier string, s Session)) {
+func (this *hub) Range(f func(identifier string, s Session) bool) {
 	this.m.Range(func(key, value interface{}) bool {
-		f(key.(string), value.(Session))
-		return true
+		return f(key.(string), value.(Session))
 	})
 }
 
