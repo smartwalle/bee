@@ -44,8 +44,7 @@ func (this *hub) GetSession(identifier string) Session {
 
 func (this *hub) RemoveSession(identifier string) {
 	if val, ok := this.m.Load(identifier); ok {
-		var s = val.(Session)
-		if s != nil {
+		if s, ok := val.(Session); ok {
 			s.Conn().Close()
 		}
 		this.m.Delete(identifier)
