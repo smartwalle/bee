@@ -42,7 +42,6 @@ type handler struct {
 }
 
 func (this *handler) GetIdentifier(r *http.Request) string {
-	r.ParseForm()
 	return ""
 }
 
