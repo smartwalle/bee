@@ -21,7 +21,6 @@ func Upgrade(upgrader websocket.Upgrader, maxMessageSize int64, hub Hub, h Handl
 		}
 
 		var s = newSession(hub, conn, identifier, maxMessageSize, h)
-		hub.SetSession(identifier, s)
 
 		var wg = &sync.WaitGroup{}
 		wg.Add(2)

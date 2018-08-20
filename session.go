@@ -46,6 +46,9 @@ func newSession(hub Hub, c *websocket.Conn, identifier string, maxMessageSize in
 	s.handler = handler
 	s.send = make(chan []byte, 256)
 	s.data = make(map[string]interface{})
+	if hub != nil {
+		hub.SetSession(identifier, s)
+	}
 	return s
 }
 
@@ -90,7 +93,6 @@ func (this *session) write(w *sync.WaitGroup) {
 		if this.handler != nil {
 			this.handler.DidClosedSession(this)
 		}
-		this.hub = nil
 		this.clean()
 	}()
 
@@ -157,7 +159,6 @@ func (this *session) Write(data []byte) {
 		if this.hub != nil {
 			this.hub.RemoveSession(this.identifier)
 		}
-		this.hub = nil
 		this.clean()
 	}
 }
@@ -177,6 +178,7 @@ func (this *session) Get(key string) interface{} {
 }
 
 func (this *session) clean() {
+	this.hub = nil
 	this.handler = nil
 	this.data = nil
 }
