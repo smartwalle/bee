@@ -52,6 +52,16 @@ func newSession(hub Hub, c *websocket.Conn, identifier string, maxMessageSize in
 	return s
 }
 
+func NewSession(hub Hub, c *websocket.Conn, identifier string, maxMessageSize int64, handler Handler) *session {
+	var s = newSession(hub, c, identifier, maxMessageSize, handler)
+	var wg = &sync.WaitGroup{}
+	wg.Add(2)
+	go s.write(wg)
+	go s.read(wg)
+	wg.Wait()
+	return s
+}
+
 func (this *session) read(w *sync.WaitGroup) {
 	defer func() {
 		close(this.send)
