@@ -2,67 +2,60 @@ package bee
 
 import (
 	"github.com/gorilla/websocket"
+	"net"
 	"sync"
 	"time"
 )
 
 const (
 	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
+	kWriteWait = 10 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	kPongWait = 60 * time.Second
 
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
+	// Send pings to peer with this period. Must be less than kPongWait.
+	kPingPeriod = (kPongWait * 9) / 10
 )
 
-type Session interface {
-	Conn() *websocket.Conn
-	Hub() Hub
-	Identifier() string
-	Write(data []byte)
-	Close()
-	Set(key string, value interface{})
-	Get(key string) interface{}
-}
-
-type session struct {
+type WebSocketConn struct {
 	conn           *websocket.Conn
 	identifier     string
-	hub            Hub
+	tag            string
 	maxMessageSize int64
 	handler        Handler
 	send           chan []byte
 	data           map[string]interface{}
 }
 
-func newSession(hub Hub, c *websocket.Conn, identifier string, maxMessageSize int64, handler Handler) *session {
-	var s = &session{}
-	s.hub = hub
+func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize int64, handler Handler) *WebSocketConn {
+	var s = &WebSocketConn{}
 	s.conn = c
 	s.identifier = identifier
+	s.tag = tag
 	s.maxMessageSize = maxMessageSize
 	s.handler = handler
 	s.send = make(chan []byte, 256)
 	s.data = make(map[string]interface{})
-	if hub != nil {
-		hub.SetSession(identifier, s)
-	}
+	s.run()
 	return s
 }
 
-func NewSession(c *websocket.Conn, identifier string, maxMessageSize int64, handler Handler) *session {
-	var s = newSession(nil, c, identifier, maxMessageSize, handler)
+func (this *WebSocketConn) run() {
 	var wg = &sync.WaitGroup{}
 	wg.Add(2)
-	go s.write(wg)
-	go s.read(wg)
+
+	go this.write(wg)
+	go this.read(wg)
+
 	wg.Wait()
-	return s
+
+	if this.handler != nil {
+		this.handler.DidOpenConn(this)
+	}
 }
 
-func (this *session) read(w *sync.WaitGroup) {
+func (this *WebSocketConn) read(w *sync.WaitGroup) {
 	defer func() {
 		close(this.send)
 		this.send = nil
@@ -70,9 +63,9 @@ func (this *session) read(w *sync.WaitGroup) {
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
-	this.conn.SetReadDeadline(time.Now().Add(pongWait))
+	this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 	this.conn.SetPongHandler(func(string) error {
-		this.conn.SetReadDeadline(time.Now().Add(pongWait))
+		this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 		return nil
 	})
 
@@ -91,17 +84,14 @@ func (this *session) read(w *sync.WaitGroup) {
 	}
 }
 
-func (this *session) write(w *sync.WaitGroup) {
-	ticker := time.NewTicker(pingPeriod)
+func (this *WebSocketConn) write(w *sync.WaitGroup) {
+	ticker := time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
 		this.conn.Close()
 
-		if this.hub != nil {
-			this.hub.RemoveSession(this.identifier)
-		}
 		if this.handler != nil {
-			this.handler.DidClosedSession(this)
+			this.handler.DidClosedConn(this)
 		}
 		this.clean()
 	}()
@@ -111,7 +101,7 @@ func (this *session) write(w *sync.WaitGroup) {
 	for {
 		select {
 		case msg, ok := <-this.send:
-			this.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if !ok {
 				this.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -142,7 +132,7 @@ func (this *session) write(w *sync.WaitGroup) {
 				this.handler.DidWrittenData(this, msg)
 			}
 		case <-ticker.C:
-			this.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if err := this.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -150,45 +140,53 @@ func (this *session) write(w *sync.WaitGroup) {
 	}
 }
 
-func (this *session) Conn() *websocket.Conn {
+func (this *WebSocketConn) Conn() *websocket.Conn {
 	return this.conn
 }
 
-func (this *session) Hub() Hub {
-	return this.hub
+func (this *WebSocketConn) Close() error {
+	return this.conn.Close()
 }
 
-func (this *session) Identifier() string {
+func (this *WebSocketConn) clean() {
+	this.handler = nil
+	this.data = nil
+}
+
+func (this *WebSocketConn) Identifier() string {
 	return this.identifier
 }
 
-func (this *session) Write(data []byte) {
-	select {
-	case this.send <- data:
-	default:
-		if this.hub != nil {
-			this.hub.RemoveSession(this.identifier)
-		}
-		this.clean()
-	}
+func (this *WebSocketConn) Tag() string {
+	return this.tag
 }
 
-func (this *session) Close() {
-	this.conn.Close()
-}
-
-func (this *session) Set(key string, value interface{}) {
+func (this *WebSocketConn) Set(key string, value interface{}) {
 	if value != nil {
 		this.data[key] = value
 	}
 }
 
-func (this *session) Get(key string) interface{} {
+func (this *WebSocketConn) Get(key string) interface{} {
 	return this.data[key]
 }
 
-func (this *session) clean() {
-	this.hub = nil
-	this.handler = nil
-	this.data = nil
+func (this *WebSocketConn) Del(key string) {
+	delete(this.data, key)
+}
+
+func (this *WebSocketConn) LocalAddr() net.Addr {
+	return this.conn.LocalAddr()
+}
+
+func (this *WebSocketConn) RemoteAddr() net.Addr {
+	return this.conn.RemoteAddr()
+}
+
+func (this *WebSocketConn) Write(data []byte) {
+	select {
+	case this.send <- data:
+	default:
+		this.clean()
+	}
 }

@@ -17,8 +17,21 @@ func main() {
 		return true
 	}
 
+	var hub = bee.NewHub()
+	var handler = &handler{h: hub}
+
 	http.HandleFunc("/", home)
-	http.HandleFunc("/ws", bee.Upgrade(upgrader, 1024, bee.NewHub(), &handler{}))
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		var conn, err = upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+
+		var rAddr = r.RemoteAddr
+
+		var wsConn = bee.NewWebSocketConn(conn, rAddr, rAddr, 1024, handler)
+		hub.AddConn(wsConn)
+	})
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -39,29 +52,26 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 type handler struct {
+	h bee.Hub
 }
 
-func (this *handler) GetIdentifier(r *http.Request) string {
-	return ""
+func (this *handler) DidOpenConn(s bee.Conn) {
+	fmt.Println("open session", s.Identifier(), s.Tag())
 }
 
-func (this *handler) DidOpenSession(s bee.Session, r *http.Request) {
-	fmt.Println("open session", s.Identifier())
-}
-
-func (this *handler) DidClosedSession(s bee.Session) {
+func (this *handler) DidClosedConn(s bee.Conn) {
+	this.h.RemoveConn(s)
 	fmt.Println("close session")
 }
 
-func (this *handler) DidWrittenData(s bee.Session, data []byte) {
+func (this *handler) DidWrittenData(s bee.Conn, data []byte) {
 	fmt.Println("write data", s.Identifier(), string(data))
 }
 
-func (this *handler) DidReceivedData(s bee.Session, data []byte) {
+func (this *handler) DidReceivedData(s bee.Conn, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
-
-	s.Hub().Range(func(identifier string, s bee.Session) bool {
-		s.Write(data)
-		return true
-	})
+	var cl = this.h.GetAllConns()
+	for _, c := range cl {
+		c.Write(data)
+	}
 }
