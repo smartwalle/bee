@@ -128,24 +128,6 @@ func (this *WebSocketConn) Conn() *websocket.Conn {
 	return this.conn
 }
 
-func (this *WebSocketConn) Close() error {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	if this.isClosed {
-		return nil
-	}
-	close(this.send)
-	this.send = nil
-	if this.handler != nil {
-		this.handler.DidClosedConn(this)
-	}
-	this.handler = nil
-	this.data = nil
-	this.isClosed = true
-	return this.conn.Close()
-}
-
 func (this *WebSocketConn) Identifier() string {
 	return this.identifier
 }
@@ -205,4 +187,22 @@ func (this *WebSocketConn) Write(data []byte) (n int, err error) {
 		this.handler.DidWrittenData(this, data)
 	}
 	return n, err
+}
+
+func (this *WebSocketConn) Close() error {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	if this.isClosed {
+		return nil
+	}
+	close(this.send)
+	this.send = nil
+	if this.handler != nil {
+		this.handler.DidClosedConn(this)
+	}
+	this.handler = nil
+	this.data = nil
+	this.isClosed = true
+	return this.conn.Close()
 }

@@ -14,8 +14,6 @@ type Conn interface {
 
 	Del(key string)
 
-	Close() error
-
 	LocalAddr() net.Addr
 
 	RemoteAddr() net.Addr
@@ -23,4 +21,6 @@ type Conn interface {
 	WriteMessage(data []byte) (err error)
 
 	Write(data []byte) (n int, err error)
+
+	Close() error
 }
