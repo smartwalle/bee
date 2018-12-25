@@ -102,19 +102,23 @@ func (this *WebSocketConn) write(w *sync.WaitGroup) {
 
 	for {
 		select {
-		case msg, ok := <-this.send:
+		case data, ok := <-this.send:
+			this.mu.Lock()
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if !ok {
 				this.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				this.mu.Unlock()
 				return
 			}
 
-			if err := this.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if err := this.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				this.mu.Unlock()
 				return
 			}
+			this.mu.Unlock()
 
 			if this.handler != nil {
-				this.handler.DidWrittenData(this, msg)
+				this.handler.DidWrittenData(this, data)
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
@@ -185,4 +189,25 @@ func (this *WebSocketConn) WriteMessage(data []byte) (err error) {
 		this.Close()
 		return errors.New("write to closed connection")
 	}
+}
+
+func (this *WebSocketConn) Write(data []byte) (n int, err error) {
+	this.mu.Lock()
+	if this.isClosed {
+		this.mu.Unlock()
+		return -1, errors.New("write to closed connection")
+	}
+
+	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
+
+	if err = this.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		this.mu.Unlock()
+		return -1, err
+	}
+	this.mu.Unlock()
+
+	if this.handler != nil {
+		this.handler.DidWrittenData(this, data)
+	}
+	return n, err
 }

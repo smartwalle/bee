@@ -25,6 +25,8 @@ type Conn interface {
 	RemoteAddr() net.Addr
 
 	WriteMessage(data []byte) (err error)
+
+	Write(data []byte) (n int, err error)
 }
 
 // --------------------------------------------------------------------------------

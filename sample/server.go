@@ -77,5 +77,5 @@ func (this *handler) DidReceivedData(c bee.Conn, data []byte) {
 	for _, c := range cl {
 		fmt.Println(c.WriteMessage(data))
 	}
-	c.WriteMessage([]byte(fmt.Sprintf("%s", time.Now())))
+	c.Write([]byte(fmt.Sprintf("%s", time.Now())))
 }
