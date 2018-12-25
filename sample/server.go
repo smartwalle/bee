@@ -30,8 +30,7 @@ func main() {
 
 		var rAddr = r.RemoteAddr
 
-		var wsConn = bee.NewWebSocketConn(conn, rAddr, rAddr, 1024, handler)
-		hub.AddConn(wsConn)
+		bee.NewWebSocketConn(conn, rAddr, rAddr, 1024, handler)
 	})
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -57,6 +56,7 @@ type handler struct {
 }
 
 func (this *handler) DidOpenConn(c bee.Conn) {
+	this.h.AddConn(c)
 	fmt.Println("open session", c.Identifier(), c.Tag())
 	fmt.Println(this.h.Count())
 }
@@ -75,7 +75,7 @@ func (this *handler) DidReceivedData(c bee.Conn, data []byte) {
 	fmt.Println("receive data", c.Identifier(), string(data))
 	var cl = this.h.GetAllConns()
 	for _, c := range cl {
-		c.Write(data)
+		fmt.Println(c.WriteMessage(data))
 	}
-	c.Write([]byte(fmt.Sprintf("%s", time.Now())))
+	c.WriteMessage([]byte(fmt.Sprintf("%s", time.Now())))
 }

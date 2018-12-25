@@ -1,6 +1,8 @@
 package bee
 
 import (
+	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -19,6 +21,7 @@ const (
 )
 
 type WebSocketConn struct {
+	mu             sync.Mutex
 	conn           *websocket.Conn
 	identifier     string
 	tag            string
@@ -26,6 +29,7 @@ type WebSocketConn struct {
 	handler        Handler
 	send           chan []byte
 	data           map[string]interface{}
+	isClosed       bool
 }
 
 func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize int64, handler Handler) *WebSocketConn {
@@ -37,6 +41,7 @@ func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize 
 	s.handler = handler
 	s.send = make(chan []byte, 256)
 	s.data = make(map[string]interface{})
+	s.isClosed = false
 	s.run()
 	return s
 }
@@ -57,9 +62,9 @@ func (this *WebSocketConn) run() {
 
 func (this *WebSocketConn) read(w *sync.WaitGroup) {
 	defer func() {
-		close(this.send)
-		this.send = nil
-		this.conn.Close()
+		this.Close()
+
+		fmt.Println("read defer")
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
@@ -88,12 +93,9 @@ func (this *WebSocketConn) write(w *sync.WaitGroup) {
 	ticker := time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
-		this.conn.Close()
+		this.Close()
 
-		if this.handler != nil {
-			this.handler.DidClosedConn(this)
-		}
-		this.clean()
+		fmt.Println("write defer")
 	}()
 
 	w.Done()
@@ -106,23 +108,6 @@ func (this *WebSocketConn) write(w *sync.WaitGroup) {
 				this.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-
-			//w, err := this.conn.NextWriter(websocket.TextMessage)
-			//if err != nil {
-			//	return
-			//}
-			//
-			//w.Write(msg)
-			//
-			//n := len(this.send)
-			//for i := 0; i < n; i++ {
-			//	w.Write(newline)
-			//	w.Write(<-this.send)
-			//}
-			//
-			//if err := w.Close(); err != nil {
-			//	return
-			//}
 
 			if err := this.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 				return
@@ -145,12 +130,21 @@ func (this *WebSocketConn) Conn() *websocket.Conn {
 }
 
 func (this *WebSocketConn) Close() error {
-	return this.conn.Close()
-}
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
-func (this *WebSocketConn) clean() {
+	if this.isClosed {
+		return nil
+	}
+	close(this.send)
+	this.send = nil
+	if this.handler != nil {
+		this.handler.DidClosedConn(this)
+	}
 	this.handler = nil
 	this.data = nil
+	this.isClosed = true
+	return this.conn.Close()
 }
 
 func (this *WebSocketConn) Identifier() string {
@@ -183,10 +177,12 @@ func (this *WebSocketConn) RemoteAddr() net.Addr {
 	return this.conn.RemoteAddr()
 }
 
-func (this *WebSocketConn) Write(data []byte) {
+func (this *WebSocketConn) WriteMessage(data []byte) (err error) {
 	select {
 	case this.send <- data:
+		return nil
 	default:
-		this.clean()
+		this.Close()
+		return errors.New("write to closed connection")
 	}
 }
