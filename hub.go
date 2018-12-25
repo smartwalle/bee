@@ -57,7 +57,7 @@ type Hub interface {
 
 // --------------------------------------------------------------------------------
 type hub struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string]map[string]Conn
 	c  int64
 }
@@ -85,8 +85,8 @@ func (this *hub) AddConn(c Conn) {
 }
 
 func (this *hub) GetConn(identifier, tag string) Conn {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+	this.mu.RLock()
+	defer this.mu.RUnlock()
 
 	var cm = this.m[identifier]
 	if cm != nil {
@@ -97,8 +97,8 @@ func (this *hub) GetConn(identifier, tag string) Conn {
 }
 
 func (this *hub) GetConns(identifier string) []Conn {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+	this.mu.RLock()
+	defer this.mu.RUnlock()
 
 	var cm = this.m[identifier]
 	if cm != nil {
@@ -112,8 +112,8 @@ func (this *hub) GetConns(identifier string) []Conn {
 }
 
 func (this *hub) GetAllConns() []Conn {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+	this.mu.RLock()
+	defer this.mu.RUnlock()
 
 	var cl = make([]Conn, 0, len(this.m))
 	for _, cm := range this.m {

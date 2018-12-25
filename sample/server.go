@@ -6,6 +6,7 @@ import (
 	"github.com/smartwalle/bee"
 	"log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -55,23 +56,26 @@ type handler struct {
 	h bee.Hub
 }
 
-func (this *handler) DidOpenConn(s bee.Conn) {
-	fmt.Println("open session", s.Identifier(), s.Tag())
+func (this *handler) DidOpenConn(c bee.Conn) {
+	fmt.Println("open session", c.Identifier(), c.Tag())
+	fmt.Println(this.h.Count())
 }
 
-func (this *handler) DidClosedConn(s bee.Conn) {
-	this.h.RemoveConn(s)
+func (this *handler) DidClosedConn(c bee.Conn) {
+	this.h.RemoveConn(c)
 	fmt.Println("close session")
+	fmt.Println(this.h.Count())
 }
 
-func (this *handler) DidWrittenData(s bee.Conn, data []byte) {
-	fmt.Println("write data", s.Identifier(), string(data))
+func (this *handler) DidWrittenData(c bee.Conn, data []byte) {
+	fmt.Println("write data", c.Identifier(), string(data))
 }
 
-func (this *handler) DidReceivedData(s bee.Conn, data []byte) {
-	fmt.Println("receive data", s.Identifier(), string(data))
+func (this *handler) DidReceivedData(c bee.Conn, data []byte) {
+	fmt.Println("receive data", c.Identifier(), string(data))
 	var cl = this.h.GetAllConns()
 	for _, c := range cl {
 		c.Write(data)
 	}
+	c.Write([]byte(fmt.Sprintf("%s", time.Now())))
 }
