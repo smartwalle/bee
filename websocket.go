@@ -19,6 +19,10 @@ const (
 	kPingPeriod = (kPongWait * 9) / 10
 )
 
+var (
+	kNewLine = []byte{'\n'}
+)
+
 type WebSocketConn struct {
 	mu             sync.Mutex
 	conn           *websocket.Conn
@@ -155,16 +159,25 @@ func (this *WebSocketConn) Tag() string {
 }
 
 func (this *WebSocketConn) Set(key string, value interface{}) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
 	if value != nil {
 		this.data[key] = value
 	}
 }
 
 func (this *WebSocketConn) Get(key string) interface{} {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
 	return this.data[key]
 }
 
 func (this *WebSocketConn) Del(key string) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
 	delete(this.data, key)
 }
 
@@ -195,10 +208,22 @@ func (this *WebSocketConn) Write(data []byte) (n int, err error) {
 
 	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 
-	if err = this.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+	w, err := this.conn.NextWriter(websocket.TextMessage)
+	if err != nil {
 		this.mu.Unlock()
 		return -1, err
 	}
+
+	if n, err = w.Write(data); err != nil {
+		this.mu.Unlock()
+		return -1, err
+	}
+
+	if err = w.Close(); err != nil {
+		this.mu.Unlock()
+		return -1, err
+	}
+
 	this.mu.Unlock()
 
 	if this.handler != nil {
