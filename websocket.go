@@ -32,17 +32,20 @@ type WebSocketConn struct {
 }
 
 func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize int64, handler Handler) *WebSocketConn {
-	var s = &WebSocketConn{}
-	s.conn = c
-	s.identifier = identifier
-	s.tag = tag
-	s.maxMessageSize = maxMessageSize
-	s.handler = handler
-	s.send = make(chan []byte, 256)
-	s.data = make(map[string]interface{})
-	s.isClosed = false
-	s.run()
-	return s
+	if c == nil {
+		return nil
+	}
+	var wsConn = &WebSocketConn{}
+	wsConn.conn = c
+	wsConn.identifier = identifier
+	wsConn.tag = tag
+	wsConn.maxMessageSize = maxMessageSize
+	wsConn.handler = handler
+	wsConn.send = make(chan []byte, 256)
+	wsConn.data = make(map[string]interface{})
+	wsConn.isClosed = false
+	wsConn.run()
+	return wsConn
 }
 
 func (this *WebSocketConn) run() {
