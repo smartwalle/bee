@@ -2,7 +2,6 @@ package bee
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -63,8 +62,6 @@ func (this *WebSocketConn) run() {
 func (this *WebSocketConn) read(w *sync.WaitGroup) {
 	defer func() {
 		this.Close()
-
-		fmt.Println("read defer")
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
@@ -94,8 +91,6 @@ func (this *WebSocketConn) write(w *sync.WaitGroup) {
 	defer func() {
 		ticker.Stop()
 		this.Close()
-
-		fmt.Println("write defer")
 	}()
 
 	w.Done()
