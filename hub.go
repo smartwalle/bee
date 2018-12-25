@@ -1,44 +1,9 @@
 package bee
 
 import (
-	"net"
 	"sync"
 	"sync/atomic"
 )
-
-// --------------------------------------------------------------------------------
-type Conn interface {
-	Identifier() string
-
-	Tag() string
-
-	Set(key string, value interface{})
-
-	Get(key string) interface{}
-
-	Del(key string)
-
-	Close() error
-
-	LocalAddr() net.Addr
-
-	RemoteAddr() net.Addr
-
-	WriteMessage(data []byte) (err error)
-
-	Write(data []byte) (n int, err error)
-}
-
-// --------------------------------------------------------------------------------
-type Handler interface {
-	DidOpenConn(c Conn)
-
-	DidClosedConn(c Conn)
-
-	DidWrittenData(c Conn, data []byte)
-
-	DidReceivedData(c Conn, data []byte)
-}
 
 // --------------------------------------------------------------------------------
 type Hub interface {
