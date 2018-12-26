@@ -23,9 +23,34 @@ var (
 	kNewLine = []byte{'\n'}
 )
 
-type WebSocketConn struct {
+// --------------------------------------------------------------------------------
+type Session interface {
+	Identifier() string
+
+	Tag() string
+
+	Set(key string, value interface{})
+
+	Get(key string) interface{}
+
+	Del(key string)
+
+	Conn() Conn
+
+	LocalAddr() net.Addr
+
+	RemoteAddr() net.Addr
+
+	WriteMessage(data []byte) (err error)
+
+	Write(data []byte) (n int, err error)
+
+	Close() error
+}
+
+type session struct {
 	mu             sync.Mutex
-	conn           *websocket.Conn
+	conn           Conn
 	identifier     string
 	tag            string
 	maxMessageSize int64
@@ -35,11 +60,11 @@ type WebSocketConn struct {
 	isClosed       bool
 }
 
-func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize int64, handler Handler) *WebSocketConn {
+func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Handler) *session {
 	if c == nil {
 		return nil
 	}
-	var wsConn = &WebSocketConn{}
+	var wsConn = &session{}
 	wsConn.conn = c
 	wsConn.identifier = identifier
 	wsConn.tag = tag
@@ -52,7 +77,7 @@ func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize 
 	return wsConn
 }
 
-func (this *WebSocketConn) run() {
+func (this *session) run() {
 	var wg = &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -62,11 +87,11 @@ func (this *WebSocketConn) run() {
 	wg.Wait()
 
 	if this.handler != nil {
-		this.handler.DidOpenConn(this)
+		this.handler.DidOpenSession(this)
 	}
 }
 
-func (this *WebSocketConn) read(w *sync.WaitGroup) {
+func (this *session) read(w *sync.WaitGroup) {
 	defer func() {
 		this.Close()
 	}()
@@ -93,7 +118,7 @@ func (this *WebSocketConn) read(w *sync.WaitGroup) {
 	}
 }
 
-func (this *WebSocketConn) write(w *sync.WaitGroup) {
+func (this *session) write(w *sync.WaitGroup) {
 	ticker := time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -131,19 +156,19 @@ func (this *WebSocketConn) write(w *sync.WaitGroup) {
 	}
 }
 
-func (this *WebSocketConn) Conn() *websocket.Conn {
+func (this *session) Conn() Conn {
 	return this.conn
 }
 
-func (this *WebSocketConn) Identifier() string {
+func (this *session) Identifier() string {
 	return this.identifier
 }
 
-func (this *WebSocketConn) Tag() string {
+func (this *session) Tag() string {
 	return this.tag
 }
 
-func (this *WebSocketConn) Set(key string, value interface{}) {
+func (this *session) Set(key string, value interface{}) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -152,29 +177,29 @@ func (this *WebSocketConn) Set(key string, value interface{}) {
 	}
 }
 
-func (this *WebSocketConn) Get(key string) interface{} {
+func (this *session) Get(key string) interface{} {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
 	return this.data[key]
 }
 
-func (this *WebSocketConn) Del(key string) {
+func (this *session) Del(key string) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
 	delete(this.data, key)
 }
 
-func (this *WebSocketConn) LocalAddr() net.Addr {
+func (this *session) LocalAddr() net.Addr {
 	return this.conn.LocalAddr()
 }
 
-func (this *WebSocketConn) RemoteAddr() net.Addr {
+func (this *session) RemoteAddr() net.Addr {
 	return this.conn.RemoteAddr()
 }
 
-func (this *WebSocketConn) WriteMessage(data []byte) (err error) {
+func (this *session) WriteMessage(data []byte) (err error) {
 	select {
 	case this.send <- data:
 		return nil
@@ -184,7 +209,7 @@ func (this *WebSocketConn) WriteMessage(data []byte) (err error) {
 	}
 }
 
-func (this *WebSocketConn) Write(data []byte) (n int, err error) {
+func (this *session) Write(data []byte) (n int, err error) {
 	this.mu.Lock()
 	if this.isClosed {
 		this.mu.Unlock()
@@ -217,7 +242,7 @@ func (this *WebSocketConn) Write(data []byte) (n int, err error) {
 	return n, err
 }
 
-func (this *WebSocketConn) Close() error {
+func (this *session) Close() error {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -227,7 +252,7 @@ func (this *WebSocketConn) Close() error {
 	close(this.send)
 	this.send = nil
 	if this.handler != nil {
-		this.handler.DidClosedConn(this)
+		this.handler.DidClosedSession(this)
 	}
 	this.handler = nil
 	this.data = nil

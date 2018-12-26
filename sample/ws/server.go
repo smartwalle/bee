@@ -30,7 +30,7 @@ func main() {
 
 		var rAddr = r.RemoteAddr
 
-		bee.NewWebSocketConn(conn, rAddr, rAddr, 1024, handler)
+		bee.NewSession(conn, rAddr, rAddr, 1024, handler)
 	})
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -55,27 +55,27 @@ type handler struct {
 	h bee.Hub
 }
 
-func (this *handler) DidOpenConn(c bee.Conn) {
-	this.h.AddConn(c)
-	fmt.Println("open session", c.Identifier(), c.Tag())
+func (this *handler) DidOpenSession(s bee.Session) {
+	this.h.AddSession(s)
+	fmt.Println("open session", s.Identifier(), s.Tag())
 	fmt.Println(this.h.Count())
 }
 
-func (this *handler) DidClosedConn(c bee.Conn) {
-	this.h.RemoveConn(c)
+func (this *handler) DidClosedSession(s bee.Session) {
+	this.h.RemoveSession(s)
 	fmt.Println("close session")
 	fmt.Println(this.h.Count())
 }
 
-func (this *handler) DidWrittenData(c bee.Conn, data []byte) {
-	fmt.Println("write data", c.Identifier(), string(data))
+func (this *handler) DidWrittenData(s bee.Session, data []byte) {
+	fmt.Println("write data", s.Identifier(), string(data))
 }
 
-func (this *handler) DidReceivedData(c bee.Conn, data []byte) {
-	fmt.Println("receive data", c.Identifier(), string(data))
-	var cl = this.h.GetAllConns()
+func (this *handler) DidReceivedData(s bee.Session, data []byte) {
+	fmt.Println("receive data", s.Identifier(), string(data))
+	var cl = this.h.GetAllSessions()
 	for _, c := range cl {
 		fmt.Println(c.WriteMessage(data))
 	}
-	c.Write([]byte(fmt.Sprintf("%s", time.Now())))
+	s.Write([]byte(fmt.Sprintf("%s", time.Now())))
 }

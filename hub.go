@@ -7,17 +7,17 @@ import (
 
 // --------------------------------------------------------------------------------
 type Hub interface {
-	AddConn(c Conn)
+	AddSession(s Session)
 
-	GetConn(identifier, tag string) Conn
+	GetSession(identifier, tag string) Session
 
-	GetConns(identifier string) []Conn
+	GetSessions(identifier string) []Session
 
-	GetAllConns() []Conn
+	GetAllSessions() []Session
 
-	RemoveConn(c Conn)
+	RemoveSession(s Session)
 
-	RemoveConns(identifier string)
+	RemoveSessions(identifier string)
 
 	Count() int64
 }
@@ -25,96 +25,96 @@ type Hub interface {
 // --------------------------------------------------------------------------------
 type hub struct {
 	mu sync.RWMutex
-	m  map[string]map[string]Conn
+	m  map[string]map[string]Session
 	c  int64
 }
 
 func NewHub() Hub {
 	var h = &hub{}
-	h.m = make(map[string]map[string]Conn)
+	h.m = make(map[string]map[string]Session)
 	return h
 }
 
-func (this *hub) AddConn(c Conn) {
-	if c != nil {
+func (this *hub) AddSession(s Session) {
+	if s != nil {
 		this.mu.Lock()
 		defer this.mu.Unlock()
 
 		atomic.AddInt64(&this.c, 1)
-		var cm = this.m[c.Identifier()]
+		var sm = this.m[s.Identifier()]
 
-		if cm == nil {
-			cm = make(map[string]Conn)
-			this.m[c.Identifier()] = cm
+		if sm == nil {
+			sm = make(map[string]Session)
+			this.m[s.Identifier()] = sm
 		}
-		cm[c.Tag()] = c
+		sm[s.Tag()] = s
 	}
 }
 
-func (this *hub) GetConn(identifier, tag string) Conn {
+func (this *hub) GetSession(identifier, tag string) Session {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 
-	var cm = this.m[identifier]
-	if cm != nil {
-		var c = cm[tag]
+	var sm = this.m[identifier]
+	if sm != nil {
+		var c = sm[tag]
 		return c
 	}
 	return nil
 }
 
-func (this *hub) GetConns(identifier string) []Conn {
+func (this *hub) GetSessions(identifier string) []Session {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 
-	var cm = this.m[identifier]
-	if cm != nil {
-		var cl = make([]Conn, 0, len(cm))
-		for _, c := range cm {
-			cl = append(cl, c)
+	var sm = this.m[identifier]
+	if sm != nil {
+		var sl = make([]Session, 0, len(sm))
+		for _, s := range sm {
+			sl = append(sl, s)
 		}
-		return cl
+		return sl
 	}
 	return nil
 }
 
-func (this *hub) GetAllConns() []Conn {
+func (this *hub) GetAllSessions() []Session {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 
-	var cl = make([]Conn, 0, len(this.m))
+	var sl = make([]Session, 0, len(this.m))
 	for _, cm := range this.m {
 		for _, c := range cm {
-			cl = append(cl, c)
+			sl = append(sl, c)
 		}
 	}
-	return cl
+	return sl
 }
 
-func (this *hub) RemoveConn(c Conn) {
-	if c != nil {
+func (this *hub) RemoveSession(s Session) {
+	if s != nil {
 		this.mu.Lock()
 		defer this.mu.Unlock()
 
-		var cm = this.m[c.Identifier()]
-		if cm != nil {
-			var c = cm[c.Tag()]
+		var sm = this.m[s.Identifier()]
+		if sm != nil {
+			var c = sm[s.Tag()]
 			if c != nil {
-				delete(cm, c.Tag())
+				delete(sm, c.Tag())
 				atomic.AddInt64(&this.c, -1)
 			}
 		}
 	}
 }
 
-func (this *hub) RemoveConns(identifier string) {
+func (this *hub) RemoveSessions(identifier string) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	var cm = this.m[identifier]
-	if cm != nil {
+	var sm = this.m[identifier]
+	if sm != nil {
 		delete(this.m, identifier)
-		atomic.AddInt64(&this.c, -int64(len(cm)))
+		atomic.AddInt64(&this.c, -int64(len(sm)))
 	}
 }
 

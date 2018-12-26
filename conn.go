@@ -1,26 +1,29 @@
 package bee
 
-import "net"
+import (
+	"io"
+	"net"
+	"time"
+)
 
-// --------------------------------------------------------------------------------
 type Conn interface {
-	Identifier() string
-
-	Tag() string
-
-	Set(key string, value interface{})
-
-	Get(key string) interface{}
-
-	Del(key string)
-
 	LocalAddr() net.Addr
 
 	RemoteAddr() net.Addr
 
-	WriteMessage(data []byte) (err error)
-
-	Write(data []byte) (n int, err error)
-
 	Close() error
+
+	WriteMessage(messageType int, data []byte) error
+
+	SetReadLimit(limit int64)
+
+	SetReadDeadline(t time.Time) error
+
+	SetPongHandler(h func(appData string) error)
+
+	SetWriteDeadline(t time.Time) error
+
+	NextWriter(messageType int) (io.WriteCloser, error)
+
+	ReadMessage() (messageType int, p []byte, err error)
 }

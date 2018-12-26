@@ -2,11 +2,11 @@ package bee
 
 // --------------------------------------------------------------------------------
 type Handler interface {
-	DidOpenConn(c Conn)
+	DidOpenSession(s Session)
 
-	DidClosedConn(c Conn)
+	DidClosedSession(s Session)
 
-	DidWrittenData(c Conn, data []byte)
+	DidWrittenData(s Session, data []byte)
 
-	DidReceivedData(c Conn, data []byte)
+	DidReceivedData(s Session, data []byte)
 }
