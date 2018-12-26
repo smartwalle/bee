@@ -13,7 +13,9 @@ func main() {
 	for i := 0; i < 10000; i++ {
 		c, _, _ := websocket.DefaultDialer.Dial("ws://127.0.0.1:8080/ws", nil)
 		cc := bee.NewWebSocketConn(c, fmt.Sprintf("xx_%d", i), "dd", 1024, handler)
-		hub.AddConn(cc)
+		if cc != nil {
+			hub.AddConn(cc)
+		}
 	}
 
 	select {}

@@ -36,17 +36,20 @@ type WebSocketConn struct {
 }
 
 func NewWebSocketConn(c *websocket.Conn, identifier, tag string, maxMessageSize int64, handler Handler) *WebSocketConn {
-	var s = &WebSocketConn{}
-	s.conn = c
-	s.identifier = identifier
-	s.tag = tag
-	s.maxMessageSize = maxMessageSize
-	s.handler = handler
-	s.send = make(chan []byte, 256)
-	s.data = make(map[string]interface{})
-	s.isClosed = false
-	s.run()
-	return s
+	if c == nil {
+		return nil
+	}
+	var wsConn = &WebSocketConn{}
+	wsConn.conn = c
+	wsConn.identifier = identifier
+	wsConn.tag = tag
+	wsConn.maxMessageSize = maxMessageSize
+	wsConn.handler = handler
+	wsConn.send = make(chan []byte, 256)
+	wsConn.data = make(map[string]interface{})
+	wsConn.isClosed = false
+	wsConn.run()
+	return wsConn
 }
 
 func (this *WebSocketConn) run() {
@@ -132,24 +135,6 @@ func (this *WebSocketConn) Conn() *websocket.Conn {
 	return this.conn
 }
 
-func (this *WebSocketConn) Close() error {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	if this.isClosed {
-		return nil
-	}
-	close(this.send)
-	this.send = nil
-	if this.handler != nil {
-		this.handler.DidClosedConn(this)
-	}
-	this.handler = nil
-	this.data = nil
-	this.isClosed = true
-	return this.conn.Close()
-}
-
 func (this *WebSocketConn) Identifier() string {
 	return this.identifier
 }
@@ -230,4 +215,22 @@ func (this *WebSocketConn) Write(data []byte) (n int, err error) {
 		this.handler.DidWrittenData(this, data)
 	}
 	return n, err
+}
+
+func (this *WebSocketConn) Close() error {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	if this.isClosed {
+		return nil
+	}
+	close(this.send)
+	this.send = nil
+	if this.handler != nil {
+		this.handler.DidClosedConn(this)
+	}
+	this.handler = nil
+	this.data = nil
+	this.isClosed = true
+	return this.conn.Close()
 }
