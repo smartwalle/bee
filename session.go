@@ -2,7 +2,6 @@ package bee
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -96,7 +95,6 @@ func (this *session) read() {
 	this.conn.SetReadLimit(this.maxMessageSize)
 	this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 	this.conn.SetPongHandler(func(string) error {
-		fmt.Println("pong")
 		this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 		return nil
 	})
@@ -143,7 +141,6 @@ func (this *session) write() {
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
-			fmt.Println("ping")
 			if err := this.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
