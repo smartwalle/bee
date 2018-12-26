@@ -2,6 +2,7 @@ package bee
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -78,20 +79,16 @@ func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Ha
 }
 
 func (this *session) run() {
-	var wg = &sync.WaitGroup{}
-	wg.Add(2)
-
-	go this.write(wg)
-	go this.read(wg)
-
-	wg.Wait()
+	go this.write()
 
 	if this.handler != nil {
 		this.handler.DidOpenSession(this)
 	}
+
+	go this.read()
 }
 
-func (this *session) read(w *sync.WaitGroup) {
+func (this *session) read() {
 	defer func() {
 		this.Close()
 	}()
@@ -99,11 +96,10 @@ func (this *session) read(w *sync.WaitGroup) {
 	this.conn.SetReadLimit(this.maxMessageSize)
 	this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 	this.conn.SetPongHandler(func(string) error {
+		fmt.Println("pong")
 		this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 		return nil
 	})
-
-	w.Done()
 
 	for {
 		_, msg, err := this.conn.ReadMessage()
@@ -118,14 +114,12 @@ func (this *session) read(w *sync.WaitGroup) {
 	}
 }
 
-func (this *session) write(w *sync.WaitGroup) {
+func (this *session) write() {
 	ticker := time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
 		this.Close()
 	}()
-
-	w.Done()
 
 	for {
 		select {
@@ -149,6 +143,7 @@ func (this *session) write(w *sync.WaitGroup) {
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
+			fmt.Println("ping")
 			if err := this.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

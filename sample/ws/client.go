@@ -12,7 +12,7 @@ func main() {
 
 	for i := 0; i < 1000; i++ {
 		c, _, _ := websocket.DefaultDialer.Dial("ws://127.0.0.1:8080/ws", nil)
-		s := bee.NewSession(c, fmt.Sprintf("xx_%d", i), "dd", 1024, handler)
+		s := bee.NewSession(c, fmt.Sprintf("xx_%d", i), "tag", 1024, handler)
 		if s != nil {
 			hub.AddSession(s)
 		}

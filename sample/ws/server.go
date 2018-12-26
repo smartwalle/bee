@@ -28,9 +28,7 @@ func main() {
 			return
 		}
 
-		var rAddr = r.RemoteAddr
-
-		bee.NewSession(conn, rAddr, rAddr, 1024, handler)
+		bee.NewSession(conn, conn.RemoteAddr().String(), "tag", 1024, handler)
 	})
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
