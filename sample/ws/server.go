@@ -56,13 +56,13 @@ type handler struct {
 func (this *handler) DidOpenSession(s bee.Session) {
 	this.h.AddSession(s)
 	fmt.Println("open session", s.Identifier(), s.Tag())
-	fmt.Println(this.h.Count())
+	fmt.Println(this.h.Len())
 }
 
 func (this *handler) DidClosedSession(s bee.Session) {
 	this.h.RemoveSession(s)
 	fmt.Println("close session")
-	fmt.Println(this.h.Count())
+	fmt.Println(this.h.Len())
 }
 
 func (this *handler) DidWrittenData(s bee.Session, data []byte) {
