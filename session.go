@@ -64,17 +64,17 @@ func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Ha
 	if c == nil {
 		return nil
 	}
-	var wsConn = &session{}
-	wsConn.conn = c
-	wsConn.identifier = identifier
-	wsConn.tag = tag
-	wsConn.maxMessageSize = maxMessageSize
-	wsConn.handler = handler
-	wsConn.send = make(chan []byte, 256)
-	wsConn.data = make(map[string]interface{})
-	wsConn.isClosed = false
-	wsConn.run()
-	return wsConn
+	var s = &session{}
+	s.conn = c
+	s.identifier = identifier
+	s.tag = tag
+	s.maxMessageSize = maxMessageSize
+	s.handler = handler
+	s.send = make(chan []byte, 256)
+	s.data = make(map[string]interface{})
+	s.isClosed = false
+	s.run()
+	return s
 }
 
 func (this *session) run() {
@@ -197,7 +197,7 @@ func (this *session) WriteMessage(data []byte) (err error) {
 		return nil
 	default:
 		this.Close()
-		return errors.New("write to closed connection")
+		return errors.New("session is closed")
 	}
 }
 
@@ -205,7 +205,7 @@ func (this *session) Write(data []byte) (n int, err error) {
 	this.mu.Lock()
 	if this.isClosed {
 		this.mu.Unlock()
-		return -1, errors.New("write to closed connection")
+		return -1, errors.New("session is closed")
 	}
 
 	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
