@@ -19,7 +19,7 @@ type Hub interface {
 
 	RemoveSessions(identifier string)
 
-	Count() int64
+	Len() int64
 }
 
 // --------------------------------------------------------------------------------
@@ -118,6 +118,6 @@ func (this *hub) RemoveSessions(identifier string) {
 	}
 }
 
-func (this *hub) Count() int64 {
+func (this *hub) Len() int64 {
 	return atomic.LoadInt64(&this.c)
 }
