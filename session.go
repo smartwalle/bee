@@ -101,7 +101,6 @@ func (this *session) read() {
 
 	for {
 		_, msg, err := this.conn.ReadMessage()
-
 		if err != nil {
 			break
 		}
@@ -243,11 +242,13 @@ func (this *session) Close() error {
 	}
 	close(this.send)
 	this.send = nil
+	this.isClosed = true
+
 	if this.handler != nil {
 		this.handler.DidClosedSession(this)
 	}
 	this.handler = nil
+
 	this.data = nil
-	this.isClosed = true
 	return this.conn.Close()
 }
