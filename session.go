@@ -254,7 +254,7 @@ func (this *session) Write(data []byte) (n int, err error) {
 	return n, err
 }
 
-func (this *session) Close() error {
+func (this *session) Close() (err error) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -265,11 +265,12 @@ func (this *session) Close() error {
 	this.send = nil
 	this.isClosed = true
 
+	err = this.conn.Close()
 	if this.handler != nil {
 		this.handler.DidClosedSession(this)
 	}
-	this.handler = nil
-
+	this.conn = nil
 	this.data = nil
-	return this.conn.Close()
+	this.handler = nil
+	return err
 }
