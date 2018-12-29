@@ -2,7 +2,6 @@ package bee
 
 import (
 	"errors"
-	"github.com/smartwalle/bee/conn"
 	"net"
 	"sync"
 	"time"
@@ -19,9 +18,31 @@ const (
 	kPingPeriod = (kPongWait * 9) / 10
 )
 
-var (
-	kNewLine = []byte{'\n'}
+const (
+	// TextMessage denotes a text data message. The text message payload is
+	// interpreted as UTF-8 encoded text data.
+	TextMessage = 1
+
+	// BinaryMessage denotes a binary data message.
+	BinaryMessage = 2
+
+	// CloseMessage denotes a close control message. The optional message
+	// payload contains a numeric code and text. Use the FormatCloseMessage
+	// function to format a close message payload.
+	CloseMessage = 8
+
+	// PingMessage denotes a ping control message. The optional message payload
+	// is UTF-8 encoded text.
+	PingMessage = 9
+
+	// PongMessage denotes a pong control message. The optional message payload
+	// is UTF-8 encoded text.
+	PongMessage = 10
 )
+
+//var (
+//	kNewLine = []byte{'\n'}
+//)
 
 // --------------------------------------------------------------------------------
 type Session interface {
@@ -124,12 +145,12 @@ func (this *session) write() {
 			this.mu.Lock()
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if !ok {
-				this.conn.WriteMessage(conn.CloseMessage, []byte{})
+				this.conn.WriteMessage(CloseMessage, []byte{})
 				this.mu.Unlock()
 				return
 			}
 
-			if err := this.conn.WriteMessage(conn.TextMessage, data); err != nil {
+			if err := this.conn.WriteMessage(TextMessage, data); err != nil {
 				this.mu.Unlock()
 				return
 			}
@@ -140,7 +161,7 @@ func (this *session) write() {
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
-			if err := this.conn.WriteMessage(conn.PingMessage, nil); err != nil {
+			if err := this.conn.WriteMessage(PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -209,7 +230,7 @@ func (this *session) Write(data []byte) (n int, err error) {
 
 	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 
-	w, err := this.conn.NextWriter(conn.TextMessage)
+	w, err := this.conn.NextWriter(TextMessage)
 	if err != nil {
 		this.mu.Unlock()
 		return -1, err
