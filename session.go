@@ -2,7 +2,7 @@ package bee
 
 import (
 	"errors"
-	"github.com/gorilla/websocket"
+	"github.com/smartwalle/bee/conn"
 	"net"
 	"sync"
 	"time"
@@ -124,12 +124,12 @@ func (this *session) write() {
 			this.mu.Lock()
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if !ok {
-				this.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				this.conn.WriteMessage(conn.CloseMessage, []byte{})
 				this.mu.Unlock()
 				return
 			}
 
-			if err := this.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			if err := this.conn.WriteMessage(conn.TextMessage, data); err != nil {
 				this.mu.Unlock()
 				return
 			}
@@ -140,7 +140,7 @@ func (this *session) write() {
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
-			if err := this.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := this.conn.WriteMessage(conn.PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -209,7 +209,7 @@ func (this *session) Write(data []byte) (n int, err error) {
 
 	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 
-	w, err := this.conn.NextWriter(websocket.TextMessage)
+	w, err := this.conn.NextWriter(conn.TextMessage)
 	if err != nil {
 		this.mu.Unlock()
 		return -1, err
