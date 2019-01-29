@@ -41,6 +41,6 @@ func (this *handler2) DidWrittenData(s bee.Session, data []byte) {
 	fmt.Println("write data", s.Identifier(), string(data))
 }
 
-func (this *handler2) DidReceivedData(s bee.Session, data []byte) {
+func (this *handler2) DidReceivedData(s bee.Session, data []byte, err error) {
 	fmt.Println("receive data", s.Identifier(), string(data))
 }

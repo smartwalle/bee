@@ -133,12 +133,13 @@ func (this *session) read(w *sync.WaitGroup) {
 
 	for {
 		_, msg, err := this.conn.ReadMessage()
-		if err != nil {
-			break
-		}
 
 		if this.handler != nil {
-			this.handler.DidReceivedData(this, msg)
+			this.handler.DidReceivedData(this, msg, err)
+		}
+
+		if err != nil {
+			break
 		}
 	}
 }

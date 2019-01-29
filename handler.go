@@ -8,5 +8,5 @@ type Handler interface {
 
 	DidWrittenData(s Session, data []byte)
 
-	DidReceivedData(s Session, data []byte)
+	DidReceivedData(s Session, data []byte, err error)
 }
