@@ -99,16 +99,25 @@ func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Ha
 }
 
 func (this *session) run() {
-	go this.write()
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	if this.isClosed {
+		return
+	}
+
+	var w = &sync.WaitGroup{}
+	w.Add(2)
+	go this.write(w)
+	go this.read(w)
+	w.Wait()
 
 	if this.handler != nil {
 		this.handler.DidOpenSession(this)
 	}
-
-	go this.read()
 }
 
-func (this *session) read() {
+func (this *session) read(w *sync.WaitGroup) {
 	defer func() {
 		this.Close()
 	}()
@@ -119,6 +128,8 @@ func (this *session) read() {
 		this.conn.SetReadDeadline(time.Now().Add(kPongWait))
 		return nil
 	})
+
+	w.Done()
 
 	for {
 		_, msg, err := this.conn.ReadMessage()
@@ -132,12 +143,14 @@ func (this *session) read() {
 	}
 }
 
-func (this *session) write() {
+func (this *session) write(w *sync.WaitGroup) {
 	ticker := time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
 		this.Close()
 	}()
+
+	w.Done()
 
 	for {
 		select {
