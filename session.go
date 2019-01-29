@@ -143,6 +143,11 @@ func (this *session) write() {
 		select {
 		case data, ok := <-this.send:
 			this.mu.Lock()
+			if this.isClosed {
+				this.mu.Unlock()
+				return
+			}
+
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if !ok {
 				this.conn.WriteMessage(CloseMessage, []byte{})
@@ -181,25 +186,16 @@ func (this *session) Tag() string {
 }
 
 func (this *session) Set(key string, value interface{}) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	if value != nil {
 		this.data[key] = value
 	}
 }
 
 func (this *session) Get(key string) interface{} {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	return this.data[key]
 }
 
 func (this *session) Del(key string) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	delete(this.data, key)
 }
 
