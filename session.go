@@ -100,9 +100,9 @@ func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Ha
 
 func (this *session) run() {
 	this.mu.Lock()
-	defer this.mu.Unlock()
 
 	if this.isClosed {
+		this.mu.Unlock()
 		return
 	}
 
@@ -111,6 +111,7 @@ func (this *session) run() {
 	go this.write(w)
 	go this.read(w)
 	w.Wait()
+	this.mu.Unlock()
 
 	if this.handler != nil {
 		this.handler.DidOpenSession(this)
