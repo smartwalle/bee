@@ -2,6 +2,7 @@ package bee
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -118,8 +119,10 @@ func (this *session) run() {
 }
 
 func (this *session) read(w *sync.WaitGroup) {
+	var err error
 	defer func() {
-		this.Close()
+		this.close(err)
+		fmt.Println("read ", err)
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
@@ -131,24 +134,27 @@ func (this *session) read(w *sync.WaitGroup) {
 
 	w.Done()
 
+	var msg []byte
 	for {
-		_, msg, err := this.conn.ReadMessage()
+		_, msg, err = this.conn.ReadMessage()
 
 		if this.handler != nil {
-			this.handler.DidReceivedData(this, msg, err)
+			this.handler.DidReceivedData(this, msg)
 		}
 
 		if err != nil {
-			break
+			return
 		}
 	}
 }
 
 func (this *session) write(w *sync.WaitGroup) {
-	ticker := time.NewTicker(kPingPeriod)
+	var err error
+	var ticker = time.NewTicker(kPingPeriod)
 	defer func() {
 		ticker.Stop()
-		this.Close()
+		this.close(err)
+		fmt.Println("write ", err)
 	}()
 
 	w.Done()
@@ -169,7 +175,7 @@ func (this *session) write(w *sync.WaitGroup) {
 				return
 			}
 
-			if err := this.conn.WriteMessage(TextMessage, data); err != nil {
+			if err = this.conn.WriteMessage(TextMessage, data); err != nil {
 				this.mu.Unlock()
 				return
 			}
@@ -180,7 +186,7 @@ func (this *session) write(w *sync.WaitGroup) {
 			}
 		case <-ticker.C:
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
-			if err := this.conn.WriteMessage(PingMessage, nil); err != nil {
+			if err = this.conn.WriteMessage(PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -226,8 +232,9 @@ func (this *session) WriteMessage(data []byte) (err error) {
 	case this.send <- data:
 		return nil
 	default:
-		this.Close()
-		return errors.New("session is closed")
+		err = errors.New("session is closed")
+		this.close(err)
+		return err
 	}
 }
 
@@ -265,6 +272,10 @@ func (this *session) Write(data []byte) (n int, err error) {
 }
 
 func (this *session) Close() (err error) {
+	return this.close(nil)
+}
+
+func (this *session) close(err error) (nErr error) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -275,12 +286,12 @@ func (this *session) Close() (err error) {
 	this.send = nil
 	this.isClosed = true
 
-	err = this.conn.Close()
+	nErr = this.conn.Close()
 	if this.handler != nil {
-		this.handler.DidClosedSession(this)
+		this.handler.DidClosedSession(this, err)
 	}
 	this.conn = nil
 	this.data = nil
 	this.handler = nil
-	return err
+	return nErr
 }

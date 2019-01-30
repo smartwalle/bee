@@ -35,7 +35,7 @@ func (this *handler) DidOpenSession(s bee.Session) {
 	fmt.Println(this.h.Len())
 }
 
-func (this *handler) DidClosedSession(s bee.Session) {
+func (this *handler) DidClosedSession(s bee.Session, err error) {
 	this.h.RemoveSession(s)
 	fmt.Println("close session")
 	fmt.Println(this.h.Len())
@@ -45,7 +45,7 @@ func (this *handler) DidWrittenData(s bee.Session, data []byte) {
 	fmt.Println("write data", s.Identifier(), string(data))
 }
 
-func (this *handler) DidReceivedData(s bee.Session, data []byte, err error) {
+func (this *handler) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
 	var cl = this.h.GetAllSessions()
 	for _, c := range cl {

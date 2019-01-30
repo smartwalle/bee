@@ -32,7 +32,7 @@ func (this *handler2) DidOpenSession(s bee.Session) {
 	fmt.Println("open session", s.Identifier(), s.Tag())
 }
 
-func (this *handler2) DidClosedSession(s bee.Session) {
+func (this *handler2) DidClosedSession(s bee.Session, err error) {
 	this.h.RemoveSession(s)
 	fmt.Println("close session")
 }
@@ -41,6 +41,6 @@ func (this *handler2) DidWrittenData(s bee.Session, data []byte) {
 	fmt.Println("write data", s.Identifier(), string(data))
 }
 
-func (this *handler2) DidReceivedData(s bee.Session, data []byte, err error) {
+func (this *handler2) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
 }
