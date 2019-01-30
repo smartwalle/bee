@@ -2,7 +2,6 @@ package bee
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -122,7 +121,6 @@ func (this *session) read(w *sync.WaitGroup) {
 	var err error
 	defer func() {
 		this.close(err)
-		fmt.Println("read ", err)
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
@@ -154,7 +152,6 @@ func (this *session) write(w *sync.WaitGroup) {
 	defer func() {
 		ticker.Stop()
 		this.close(err)
-		fmt.Println("write ", err)
 	}()
 
 	w.Done()
