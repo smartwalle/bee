@@ -46,7 +46,7 @@ func (this *QUICDialer) DialContext(ctx context.Context, network, addr string) (
 		return nil, errors.New("closed stream.")
 	}
 
-	c := &qStream{sess: sess, Stream: stream}
+	c := &qSession{sess: sess, Stream: stream}
 	return NewConn(c, false, this.ReadBufferSize, this.WriteBufferSize, nil, nil, nil), nil
 }
 
@@ -67,7 +67,7 @@ func DialQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (Conn, erro
 		return nil, errors.New("closed stream.")
 	}
 
-	c := &qStream{sess: sess, Stream: stream}
+	c := &qSession{sess: sess, Stream: stream}
 	return NewConn(c, false, 0, 0, nil, nil, nil), nil
 }
 
@@ -100,7 +100,7 @@ func (this *QUICListener) doAccept() {
 				}
 
 				this.acceptConn <- &qConn{
-					conn: &qStream{sess: sess, Stream: stream},
+					conn: &qSession{sess: sess, Stream: stream},
 					err:  nil,
 				}
 			}
@@ -134,15 +134,20 @@ type qConn struct {
 }
 
 // --------------------------------------------------------------------------------
-type qStream struct {
+type qSession struct {
 	sess quic.Session
 	quic.Stream
 }
 
-func (this *qStream) LocalAddr() net.Addr {
+func (this *qSession) LocalAddr() net.Addr {
 	return this.sess.LocalAddr()
 }
 
-func (this *qStream) RemoteAddr() net.Addr {
+func (this *qSession) RemoteAddr() net.Addr {
 	return this.sess.RemoteAddr()
+}
+
+func (this *qSession) Close() error {
+	this.Stream.Close()
+	return this.sess.Close()
 }
