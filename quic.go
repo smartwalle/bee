@@ -18,7 +18,7 @@ type QUICDialer struct {
 	config          *quic.Config
 }
 
-func NewDialQUIC(tlsConf *tls.Config, config *quic.Config) *QUICDialer {
+func NewQUICDialer(tlsConf *tls.Config, config *quic.Config) *QUICDialer {
 	var d = &QUICDialer{}
 	d.tlsConf = tlsConf
 	d.config = config
