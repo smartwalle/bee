@@ -51,24 +51,10 @@ func (this *QUICDialer) DialContext(ctx context.Context, network, addr string) (
 }
 
 func DialQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (Conn, error) {
-	sess, err := quic.DialAddr(addr, tlsConf, config)
-	if err != nil {
-		return nil, err
-	}
-
-	stream, err := sess.OpenStream()
-	if err != nil {
-		sess.Close()
-		return nil, err
-	}
-
-	if stream == nil {
-		sess.Close()
-		return nil, errors.New("closed stream")
-	}
-
-	c := &qSession{sess: sess, Stream: stream}
-	return NewConn(c, false, 0, 0, nil, nil, nil), nil
+	var d QUICDialer
+	d.tlsConf = tlsConf
+	d.config = config
+	return d.DialContext(context.Background(), "", addr)
 }
 
 // --------------------------------------------------------------------------------
