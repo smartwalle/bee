@@ -43,7 +43,7 @@ func (this *QUICDialer) DialContext(ctx context.Context, network, addr string) (
 
 	if stream == nil {
 		sess.Close()
-		return nil, errors.New("closed stream.")
+		return nil, errors.New("closed stream")
 	}
 
 	c := &qSession{sess: sess, Stream: stream}
@@ -64,7 +64,7 @@ func DialQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (Conn, erro
 
 	if stream == nil {
 		sess.Close()
-		return nil, errors.New("closed stream.")
+		return nil, errors.New("closed stream")
 	}
 
 	c := &qSession{sess: sess, Stream: stream}
@@ -73,7 +73,7 @@ func DialQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (Conn, erro
 
 // --------------------------------------------------------------------------------
 type QUICListener struct {
-	quic.Listener
+	ln              quic.Listener
 	acceptConn      chan *qConn
 	ReadBufferSize  int
 	WriteBufferSize int
@@ -81,9 +81,9 @@ type QUICListener struct {
 
 func (this *QUICListener) doAccept() {
 	for {
-		sess, err := this.Listener.Accept()
+		sess, err := this.ln.Accept()
 		if err != nil {
-			continue
+			return
 		}
 
 		go func(sess quic.Session) {
@@ -122,9 +122,9 @@ func ListenQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (*QUICLis
 		return nil, err
 	}
 
-	nl := &QUICListener{Listener: l, acceptConn: make(chan *qConn, 1)}
-	go nl.doAccept()
-	return nl, nil
+	ln := &QUICListener{ln: l, acceptConn: make(chan *qConn, 1)}
+	go ln.doAccept()
+	return ln, nil
 }
 
 // --------------------------------------------------------------------------------
