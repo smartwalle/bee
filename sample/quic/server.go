@@ -54,11 +54,11 @@ func (this *handler) DidWrittenData(s bee.Session, data []byte) {
 
 func (this *handler) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
-	var cl = this.h.GetAllSessions()
-	for _, c := range cl {
-		fmt.Println(c.WriteMessage(data))
-	}
-	s.Write([]byte(fmt.Sprintf("%s", time.Now())))
+	//var cl = this.h.GetAllSessions()
+	//for _, c := range cl {
+	//	fmt.Println(c.WriteMessage(data))
+	//}
+	//s.Write([]byte(fmt.Sprintf("%s", time.Now())))
 }
 
 func generateTLSConfig() *tls.Config {

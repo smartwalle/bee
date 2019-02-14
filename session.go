@@ -135,6 +135,9 @@ func (this *session) read(w *sync.WaitGroup) {
 
 	var msg []byte
 	for {
+		if this.isClosed {
+			return
+		}
 		_, msg, err = this.conn.ReadMessage()
 
 		if this.handler != nil {
@@ -183,6 +186,13 @@ func (this *session) write(w *sync.WaitGroup) {
 				this.handler.DidWrittenData(this, data)
 			}
 		case <-ticker.C:
+			this.mu.Lock()
+			if this.isClosed {
+				this.mu.Unlock()
+				return
+			}
+			this.mu.Unlock()
+
 			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
 			if err = this.conn.WriteMessage(PingMessage, nil); err != nil {
 				return

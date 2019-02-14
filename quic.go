@@ -3,6 +3,7 @@ package bee
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/smartwalle/bee/conn"
 	"net"
@@ -40,6 +41,11 @@ func (this *QUICDialer) DialContext(ctx context.Context, network, addr string) (
 		return nil, err
 	}
 
+	if stream == nil {
+		sess.Close()
+		return nil, errors.New("closed stream.")
+	}
+
 	c := &qStream{sess: sess, Stream: stream}
 	return NewConn(c, false, this.ReadBufferSize, this.WriteBufferSize, nil, nil, nil), nil
 }
@@ -54,6 +60,11 @@ func DialQUIC(addr string, tlsConf *tls.Config, config *quic.Config) (Conn, erro
 	if err != nil {
 		sess.Close()
 		return nil, err
+	}
+
+	if stream == nil {
+		sess.Close()
+		return nil, errors.New("closed stream.")
 	}
 
 	c := &qStream{sess: sess, Stream: stream}
@@ -82,6 +93,12 @@ func (this *QUICListener) doAccept() {
 					sess.Close()
 					return
 				}
+
+				if stream == nil {
+					sess.Close()
+					return
+				}
+
 				this.acceptConn <- &qConn{
 					conn: &qStream{sess: sess, Stream: stream},
 					err:  nil,
