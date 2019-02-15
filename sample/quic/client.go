@@ -15,10 +15,11 @@ func main() {
 	for i := 0; i < 100; i++ {
 		c, err := bee.DialQUIC(":8889", &tls.Config{InsecureSkipVerify: true}, &quic.Config{IdleTimeout: 60 * time.Second})
 		if err != nil {
+			fmt.Println()
 			return
 		}
 
-		s := bee.NewSession(c, fmt.Sprintf("xx_%d", i), "tag", 1024, handler)
+		s := bee.NewSession(c, handler, bee.WithIdentifier(fmt.Sprintf("xx_%d", i)))
 		if s != nil {
 			hub.AddSession(s)
 		}
@@ -33,6 +34,7 @@ type handler2 struct {
 
 func (this *handler2) DidOpenSession(s bee.Session) {
 	fmt.Println("open session", s.Identifier(), s.Tag())
+	s.WriteMessage([]byte("xxx"))
 }
 
 func (this *handler2) DidClosedSession(s bee.Session, err error) {

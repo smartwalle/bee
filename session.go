@@ -16,6 +16,12 @@ const (
 
 	// Send pings to peer with this period. Must be less than kPongWait.
 	kPingPeriod = (kPongWait * 9) / 10
+
+	kDefaultWriteBufferSize = 8
+
+	kDefaultMaxMessageSize = 1024
+
+	kDefaultTag = "default"
 )
 
 const (
@@ -45,6 +51,53 @@ const (
 //)
 
 // --------------------------------------------------------------------------------
+type Option interface {
+	Apply(*session)
+}
+
+type optionFunc func(*session)
+
+func (f optionFunc) Apply(s *session) {
+	f(s)
+}
+
+func WithWriteBufferSize(size int) Option {
+	return optionFunc(func(s *session) {
+		if size <= 0 {
+			s.writeBufferSize = kDefaultWriteBufferSize
+		}
+		s.writeBufferSize = size
+	})
+}
+
+func WithMaxMessageSize(size int64) Option {
+	return optionFunc(func(s *session) {
+		if size <= 0 {
+			size = kDefaultMaxMessageSize
+		}
+		s.maxMessageSize = size
+	})
+}
+
+func WithIdentifier(identifier string) Option {
+	return optionFunc(func(s *session) {
+		if identifier == "" {
+			identifier = s.conn.RemoteAddr().String()
+		}
+		s.identifier = identifier
+	})
+}
+
+func WithTag(tag string) Option {
+	return optionFunc(func(s *session) {
+		if tag == "" {
+			tag = kDefaultTag
+		}
+		s.tag = tag
+	})
+}
+
+// --------------------------------------------------------------------------------
 type Session interface {
 	Identifier() string
 
@@ -70,28 +123,35 @@ type Session interface {
 }
 
 type session struct {
-	mu             sync.Mutex
-	conn           Conn
-	identifier     string
-	tag            string
-	maxMessageSize int64
-	handler        Handler
-	send           chan []byte
-	data           map[string]interface{}
-	isClosed       bool
+	mu              sync.Mutex
+	conn            Conn
+	identifier      string
+	tag             string
+	maxMessageSize  int64
+	handler         Handler
+	writeBufferSize int
+	send            chan []byte
+	data            map[string]interface{}
+	isClosed        bool
 }
 
-func NewSession(c Conn, identifier, tag string, maxMessageSize int64, handler Handler) *session {
+func NewSession(c Conn, handler Handler, opts ...Option) *session {
 	if c == nil {
 		return nil
 	}
 	var s = &session{}
 	s.conn = c
-	s.identifier = identifier
-	s.tag = tag
-	s.maxMessageSize = maxMessageSize
 	s.handler = handler
-	s.send = make(chan []byte, 256)
+	s.identifier = s.conn.RemoteAddr().String()
+	s.tag = kDefaultTag
+	s.maxMessageSize = kDefaultMaxMessageSize
+	s.writeBufferSize = kDefaultWriteBufferSize
+
+	for _, opt := range opts {
+		opt.Apply(s)
+	}
+
+	s.send = make(chan []byte, s.writeBufferSize)
 	s.data = make(map[string]interface{})
 	s.isClosed = false
 	s.run()

@@ -28,7 +28,7 @@ func main() {
 			return
 		}
 
-		bee.NewSession(c, c.RemoteAddr().String(), "tag", 1024, handler)
+		bee.NewSession(c, handler)
 	}
 }
 
@@ -54,7 +54,7 @@ func (this *handler) DidWrittenData(s bee.Session, data []byte) {
 
 func (this *handler) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
-	s.WriteMessage([]byte("success"))
+	s.WriteMessage([]byte("success haha"))
 	//var cl = this.h.GetAllSessions()
 	//for _, c := range cl {
 	//	fmt.Println(c.WriteMessage(data))

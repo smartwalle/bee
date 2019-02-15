@@ -16,7 +16,7 @@ func main() {
 			return
 		}
 
-		s := bee.NewSession(c, fmt.Sprintf("xx_%d", i), "tag", 1024, handler)
+		s := bee.NewSession(c, handler, bee.WithIdentifier(fmt.Sprintf("xx_%d", i)))
 		if s != nil {
 			hub.AddSession(s)
 		}

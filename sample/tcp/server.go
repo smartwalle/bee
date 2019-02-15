@@ -21,7 +21,7 @@ func main() {
 			return
 		}
 
-		bee.NewSession(c, c.RemoteAddr().String(), "tag", 1024, handler)
+		bee.NewSession(c, handler)
 	}
 }
 

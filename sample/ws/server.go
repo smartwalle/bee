@@ -28,7 +28,7 @@ func main() {
 			return
 		}
 
-		var s = bee.NewSession(conn, conn.RemoteAddr().String(), "tag", 1024, handler)
+		var s = bee.NewSession(conn, handler)
 		s.WriteMessage([]byte("xxx"))
 	})
 	err := http.ListenAndServe(":8080", nil)

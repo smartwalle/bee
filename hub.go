@@ -57,6 +57,9 @@ func (this *hub) GetSession(identifier, tag string) Session {
 
 	var sm = this.m[identifier]
 	if sm != nil {
+		if tag == "" {
+			tag = kDefaultTag
+		}
 		var c = sm[tag]
 		return c
 	}
