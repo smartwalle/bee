@@ -9,13 +9,15 @@ import (
 
 const (
 	// Time allowed to write a message to the peer.
-	kWriteWait = 10 * time.Second
+	kDefaultWriteDeadline = 10 * time.Second
+
+	kDefaultReadDeadline = 60 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	kPongWait = 60 * time.Second
+	//kDefaultPongWait = kDefaultReadDeadline
 
-	// Send pings to peer with this period. Must be less than kPongWait.
-	kPingPeriod = (kPongWait * 9) / 10
+	// Send pings to peer with this period. Must be less than kDefaultPongWait.
+	//kDefaultPingPeriod = (kDefaultPongWait * 9) / 10
 
 	kDefaultWriteBufferSize = 8
 
@@ -97,6 +99,24 @@ func WithTag(tag string) Option {
 	})
 }
 
+func WithWriteDeadline(t time.Duration) Option {
+	return optionFunc(func(s *session) {
+		if t <= 0 {
+			t = kDefaultWriteDeadline
+		}
+		s.writeDeadline = t
+	})
+}
+
+func WithReadDeadline(t time.Duration) Option {
+	return optionFunc(func(s *session) {
+		if t <= 0 {
+			t = kDefaultReadDeadline
+		}
+		s.readDeadline = t
+	})
+}
+
 // --------------------------------------------------------------------------------
 type Session interface {
 	Identifier() string
@@ -123,16 +143,24 @@ type Session interface {
 }
 
 type session struct {
-	mu              sync.Mutex
-	conn            Conn
+	mu      sync.Mutex
+	conn    Conn
+	handler Handler
+
 	identifier      string
 	tag             string
 	maxMessageSize  int64
-	handler         Handler
 	writeBufferSize int
-	send            chan []byte
-	data            map[string]interface{}
-	isClosed        bool
+
+	writeDeadline time.Duration
+	readDeadline  time.Duration
+
+	pongWait   time.Duration
+	pingPeriod time.Duration
+
+	send     chan []byte
+	data     map[string]interface{}
+	isClosed bool
 }
 
 func NewSession(c Conn, handler Handler, opts ...Option) *session {
@@ -147,9 +175,15 @@ func NewSession(c Conn, handler Handler, opts ...Option) *session {
 	s.maxMessageSize = kDefaultMaxMessageSize
 	s.writeBufferSize = kDefaultWriteBufferSize
 
+	s.writeDeadline = kDefaultWriteDeadline
+	s.readDeadline = kDefaultReadDeadline
+
 	for _, opt := range opts {
 		opt.Apply(s)
 	}
+
+	s.pongWait = s.readDeadline
+	s.pingPeriod = (s.pongWait * 9) / 10
 
 	s.send = make(chan []byte, s.writeBufferSize)
 	s.data = make(map[string]interface{})
@@ -185,9 +219,9 @@ func (this *session) read(w *sync.WaitGroup) {
 	}()
 
 	this.conn.SetReadLimit(this.maxMessageSize)
-	this.conn.SetReadDeadline(time.Now().Add(kPongWait))
+	this.conn.SetReadDeadline(time.Now().Add(this.pongWait))
 	this.conn.SetPongHandler(func(string) error {
-		this.conn.SetReadDeadline(time.Now().Add(kPongWait))
+		this.conn.SetReadDeadline(time.Now().Add(this.pongWait))
 		return nil
 	})
 
@@ -212,7 +246,7 @@ func (this *session) read(w *sync.WaitGroup) {
 
 func (this *session) write(w *sync.WaitGroup) {
 	var err error
-	var ticker = time.NewTicker(kPingPeriod)
+	var ticker = time.NewTicker(this.pingPeriod)
 	defer func() {
 		ticker.Stop()
 		this.close(err)
@@ -229,7 +263,7 @@ func (this *session) write(w *sync.WaitGroup) {
 				return
 			}
 
-			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
+			this.conn.SetWriteDeadline(time.Now().Add(this.writeDeadline))
 			if !ok {
 				this.conn.WriteMessage(CloseMessage, []byte{})
 				this.mu.Unlock()
@@ -253,7 +287,7 @@ func (this *session) write(w *sync.WaitGroup) {
 			}
 			this.mu.Unlock()
 
-			this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
+			this.conn.SetWriteDeadline(time.Now().Add(this.writeDeadline))
 			if err = this.conn.WriteMessage(PingMessage, nil); err != nil {
 				return
 			}
@@ -313,7 +347,7 @@ func (this *session) Write(data []byte) (n int, err error) {
 		return -1, errors.New("session is closed")
 	}
 
-	this.conn.SetWriteDeadline(time.Now().Add(kWriteWait))
+	this.conn.SetWriteDeadline(time.Now().Add(this.writeDeadline))
 
 	w, err := this.conn.NextWriter(TextMessage)
 	if err != nil {

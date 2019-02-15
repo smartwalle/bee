@@ -7,14 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/lucas-clemente/quic-go"
 	"github.com/smartwalle/bee"
 	"math/big"
 	"time"
 )
 
 func main() {
-	listener, err := bee.ListenQUIC(":8889", generateTLSConfig(), &quic.Config{IdleTimeout: time.Second * 60})
+	listener, err := bee.ListenQUIC(":8889", generateTLSConfig(), nil)
 	if err != nil {
 		return
 	}
@@ -28,7 +27,7 @@ func main() {
 			return
 		}
 
-		bee.NewSession(c, handler)
+		bee.NewSession(c, handler, bee.WithReadDeadline(time.Second*30))
 	}
 }
 
