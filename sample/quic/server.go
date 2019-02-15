@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	listener, err := bee.ListenQUIC("localhost:4242", generateTLSConfig(), &quic.Config{IdleTimeout: time.Second * 60})
+	listener, err := bee.ListenQUIC(":8889", generateTLSConfig(), &quic.Config{IdleTimeout: time.Second * 60})
 	if err != nil {
 		return
 	}
@@ -54,6 +54,7 @@ func (this *handler) DidWrittenData(s bee.Session, data []byte) {
 
 func (this *handler) DidReceivedData(s bee.Session, data []byte) {
 	fmt.Println("receive data", s.Identifier(), string(data))
+	s.WriteMessage([]byte("success"))
 	//var cl = this.h.GetAllSessions()
 	//for _, c := range cl {
 	//	fmt.Println(c.WriteMessage(data))

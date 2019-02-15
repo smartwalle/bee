@@ -13,7 +13,7 @@ func main() {
 	var handler = &handler2{h: hub}
 
 	for i := 0; i < 100; i++ {
-		c, err := bee.DialQUIC("localhost:4242", &tls.Config{InsecureSkipVerify: true}, &quic.Config{IdleTimeout: 60 * time.Second})
+		c, err := bee.DialQUIC(":8889", &tls.Config{InsecureSkipVerify: true}, &quic.Config{IdleTimeout: 60 * time.Second})
 		if err != nil {
 			return
 		}
