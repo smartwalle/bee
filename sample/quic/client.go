@@ -11,10 +11,10 @@ func main() {
 	var hub = bee.NewHub()
 	var handler = &handler2{h: hub}
 
-	for i := 0; i < 100; i++ {
-		c, err := bee.DialQUIC("hk.smartwalle.tk:8889", &tls.Config{InsecureSkipVerify: true}, nil)
+	for i := 0; i < 1; i++ {
+		c, err := bee.DialQUIC("127.0.0.1:8889", &tls.Config{InsecureSkipVerify: true}, nil)
 		if err != nil {
-			fmt.Println()
+			fmt.Println(err)
 			return
 		}
 
