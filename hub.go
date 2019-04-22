@@ -106,6 +106,9 @@ func (this *hub) RemoveSession(s Session) {
 				delete(sm, c.Tag())
 				atomic.AddInt64(&this.c, -1)
 			}
+			if len(sm) == 0 {
+				delete(this.m, s.Identifier())
+			}
 		}
 	}
 }
