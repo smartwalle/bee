@@ -40,14 +40,17 @@ func (this *hub) AddSession(s Session) {
 		this.mu.Lock()
 		defer this.mu.Unlock()
 
-		atomic.AddInt64(&this.c, 1)
 		var sm = this.m[s.Identifier()]
 
 		if sm == nil {
 			sm = make(map[string]Session)
 			this.m[s.Identifier()] = sm
 		}
-		sm[s.Tag()] = s
+
+		if _, ok := sm[s.Tag()]; ok == false {
+			atomic.AddInt64(&this.c, 1)
+			sm[s.Tag()] = s
+		}
 	}
 }
 
