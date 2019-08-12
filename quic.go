@@ -87,14 +87,14 @@ type QUICListener struct {
 
 func (this *QUICListener) doAccept() {
 	for {
-		sess, err := this.ln.Accept()
+		sess, err := this.ln.Accept(context.Background())
 		if err != nil {
 			return
 		}
 
 		go func(sess quic.Session) {
 			for {
-				stream, err := sess.AcceptStream()
+				stream, err := sess.AcceptStream(context.Background())
 				if err != nil {
 					sess.Close()
 					return
